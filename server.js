@@ -24,7 +24,7 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
   username: {type: String, required: true, unique: true},
-  log: [{type: Schema.Types.ObjectId, ref: 'Exercises'}]
+  log: [{type: Schema.Types.ObjectId, ref: 'exercises'}]
 });
 
 const exerciseSchema = new Schema({
@@ -33,15 +33,15 @@ const exerciseSchema = new Schema({
   date: {type: Date, default: Date.now}
 });
 
-const Users = mongoose.model('Users', userSchema);
-const Exercises = mongoose.model('Exercises', exerciseSchema);
+const users = mongoose.model('users', userSchema);
+const exercises = mongoose.model('exercises', exerciseSchema);
 
 app.post('/api/users', (req, res) => {
   async function createUser() {
     try {
       const getUser = req.body.username;
 
-      const user = new Users({
+      const user = new users({
         username: getUser
       });
 
@@ -63,7 +63,7 @@ app.post('/api/users', (req, res) => {
 app.get('/api/users', (req, res) => {
   async function getAllUsers() {
     try {
-      const allUsers = await Users.find({})
+      const allUsers = await users.find({})
       .select({log: 0, __v: 0})
       .exec();
 
@@ -92,14 +92,14 @@ app.post('/api/users/:_id/exercises', (req, res) => {
         throw new Error('Invalid date format');
       }
 
-      const findUser = await Users.findById(id)
+      const findUser = await users.findById(id)
       .exec();
 
       if (!findUser) {
         throw new Error('ID not found');
       }
 
-      const exercise = await new Exercises({
+      const exercise = await new exercises({
         description: getDesc,
         duration: getDur,
         date: getDate
@@ -134,81 +134,38 @@ app.get('/api/users/:_id/logs', (req, res) => {
 
       const {from, to, limit} = req.query;
 
-      const userLog = await Users.findById(id)
-      .populate('log')
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+
+      const user = await users.findById(id)
+      .populate({
+        path: 'log',
+        match: from && to ? {date: {$gte: fromDate, $lte: toDate}}
+        : from ? {date: {$gte: fromDate}}
+        : to ? {date: {$lte: toDate}}
+        : null,
+        limit: limit ? limit : null
+      })
       .exec();
 
-      let logs = await userLog.log.map(i => {
-        return {
-          description: i.description,
-          duration: i.duration,
-          date: i.date
-        };
-      });
+      const result = {
+        _id: user._id,
+        username: user.username
+      }
 
-      // parameters to a /api/users/:_id/logs request
-      if (from && to) {
-        const fromDate = new Date(from);
-
-        const toDate = new Date(to);
-        
-        logs = logs.filter(i => i.date <= toDate && i.date >= fromDate);
+      if (from && to) {     
+        result.from = fromDate;
+        result.to = toDate
       } else if (from) {
-        const fromDate = new Date(from);
-
-        logs = logs.filter(i => i.date >= fromDate);
+        result.from = fromDate;
       } else if (to) {
-        const toDate = new Date(to);
-
-        logs = logs.filter(i => i.date <= toDate);
+        result.to = toDate;
       }
 
-      if (limit) {
-        logs = logs.slice(0, limit);
-      }
+      result.count = user.log.length;
+      result.log = user.log;
 
-      const result = await logs.map(i => {
-        return {
-          description: i.description,
-          duration: i.duration,
-          date: new Date(i.date).toDateString()
-        }
-      });
-      
-      // return json
-      if (from && to) {
-        return res.json({
-          _id: userLog._id,
-          username: userLog.username,
-          from: new Date(from).toDateString(),
-          to: new Date(to).toDateString(),
-          count: result.length,
-          log: result
-        });
-      } else if (from) {
-        return res.json({
-          _id: userLog._id,
-          username: userLog.username,
-          from: new Date(from).toDateString(),
-          count: result.length,
-          log: result
-        });
-      } else if (to) {
-        return res.json({
-          _id: userLog._id,
-          username: userLog.username,
-          to: new Date(to).toDateString(),
-          count: result.length,
-          log: result
-        });
-      } else {
-        return res.json({
-          _id: userLog._id,
-          username: userLog.username,
-          count: result.length,
-          log: result
-        });
-      }
+      return res.json(result);
     } catch (error) {
       console.log(error);
       return res.json({error: error.message})
