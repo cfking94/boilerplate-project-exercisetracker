@@ -154,16 +154,22 @@ app.get('/api/users/:_id/logs', (req, res) => {
       }
 
       if (from && to) {     
-        result.from = fromDate;
-        result.to = toDate
+        result.from = fromDate.toDateString();
+        result.to = toDate.toDateString();
       } else if (from) {
-        result.from = fromDate;
+        result.from = fromDate.toDateString();
       } else if (to) {
-        result.to = toDate;
+        result.to = toDate.toDateString();
       }
 
       result.count = user.log.length;
-      result.log = user.log;
+      result.log = user.log.map(i => {
+        return {
+          description: i.description,
+          duration: i.duration,
+          date: i.date.toDateString()
+        }
+      });
 
       return res.json(result);
     } catch (error) {
