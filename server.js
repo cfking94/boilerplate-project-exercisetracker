@@ -84,7 +84,7 @@ app.post('/api/users/:_id/exercises', (req, res) => {
         
       let {description: getDesc, duration: getDur, date: getDate} = req.body;
 
-      // Change null to undefined to make default "Date.now" work,
+      // Change null to undefined (Defaults do **not** run on null, '', or value other than undefined)
       // else verify date format
       if (!getDate) {
         getDate = undefined;
