@@ -144,7 +144,7 @@ app.get('/api/users/:_id/logs', (req, res) => {
         : from ? {date: {$gte: fromDate}}
         : to ? {date: {$lte: toDate}}
         : null,
-        limit: limit ? limit : null
+        options: {limit: limit ? limit : null}
       })
       .exec();
 
