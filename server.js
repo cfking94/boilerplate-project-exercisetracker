@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 
 // Set up MongoDB connection
-mongoose.connect(process.env.DB_URI, {useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true});
+mongoose.connect(process.env.DB_URI, {useNewUrlParser: true, useUnifiedTopology: true});
 
 // Basic configuration
 app.use(cors());
